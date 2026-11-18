@@ -20,11 +20,11 @@ RUN apt-get update \
 COPY --from=ghcr.io/astral-sh/uv:0.13 /uv /uvx /bin/
 WORKDIR /app
 
-# Dependencies first (cached layer), then the project itself
+# Dependencies first (cached layer), then the project. The uv cache is a build cache, not part of the image.
 COPY pyproject.toml uv.lock .python-version README.md ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-install-project
 COPY src ./src
-RUN uv sync --frozen --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev
 
 EXPOSE 8000
 VOLUME ["/app/data", "/app/models", "/app/vendor", "/root/.cache/huggingface"]
