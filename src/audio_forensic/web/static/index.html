@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Audio Forensic</title>
+  <script>document.documentElement.dataset.theme = localStorage.getItem("af-theme") || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");</script>
+  <link rel="stylesheet" href="static/style.css?v=4">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M7 4.5h3.5v15H7zM13.5 4.5H17v15h-3.5z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M6 5v14M18 5 9 12l9 7z"/></symbol>
+    <symbol id="i-loop" viewBox="0 0 24 24"><path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/></symbol>
+    <symbol id="i-vol" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m22 9-6 6M16 9l6 6"/></symbol>
+    <symbol id="i-split" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></symbol>
+    <symbol id="i-zoom-in" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M11 8v6M8 11h6"/></symbol>
+    <symbol id="i-zoom-out" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M8 11h6"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V5M7 10l5-5 5 5M5 20h14"/></symbol>
+    <symbol id="i-audio" viewBox="0 0 24 24"><path d="M3 12h2M7 8v8M11 5v14M15 9v6M19 7v10"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></symbol>
+    <symbol id="i-youtube" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="19" r="1.4" fill="currentColor"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 4v6h6"/><path d="M4.5 15a8 8 0 1 0 1.9-8.3L4 10"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-chip" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M8 7h7"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16M3 21v-5h5"/></symbol>
+  </defs>
+</svg>
+
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 24 24"><use href="#i-audio"/></svg>
+    <span class="brand-name">Audio Forensic</span>
+    <a class="demo-badge" id="demoBadge" hidden target="_blank" rel="noopener">Demo</a>
+  </div>
+  <span class="topbar-sep"></span>
+  <input class="session-name" id="sessionName" placeholder="No source loaded" aria-label="Session name" spellcheck="false" disabled>
+  <div class="topbar-right">
+    <div class="gpu-meter" id="gpuMeter" hidden data-help="GPU memory in use right now, by all programs|Turns red above 90%: close other GPU apps or press Stop">
+      <span id="gpuMeterName"></span>
+      <span class="meter"><span class="meter-fill" id="gpuMeterFill"></span></span>
+      <span class="mono dim" id="gpuMeterText"></span>
+    </div>
+    <button class="icon-btn" id="themeBtn"></button>
+    <button class="btn ghost" id="docsBtn" data-help="Model guide: sizes, memory needs and how separation works"><svg><use href="#i-book"/></svg>Models</button>
+    <button class="btn ghost" id="historyBtn" data-help="Past sessions with their tracks and edits|Delete a session to free disk space"<svg><use href="#i-clock"/></svg>History</button>
+    <div class="menu-wrap">
+      <button class="btn" id="exportBtn" disabled data-help="Download the result|Mix WAV: exactly what you hear (mute, solo, levels and clip edits applied)|Mix MP4: the original video with the new mix|ZIP: every track as its own WAV"><svg><use href="#i-download"/></svg>Export<svg class="chev"><use href="#i-chevron"/></svg></button>
+      <div class="menu" id="exportMenu" hidden>
+        <button class="menu-item" data-format="wav">Mix as WAV <span class="dim">48 kHz · 24-bit</span></button>
+        <button class="menu-item" data-format="mp4" id="exportMp4">Mix as MP4 <span class="dim">video + new audio</span></button>
+        <button class="menu-item" data-format="zip">All tracks as ZIP <span class="dim">separate WAVs</span></button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-scroll">
+
+      <section class="section">
+        <label class="section-title" for="modelSelect"><span data-help="Which SAM-Audio version separates the sound|Small FP16: fastest, ~2.5 GB GPU memory|Large FP8: best quality that fits a 6 GB GPU, ~2× slower than real time|Large FP16: same quality, weights streamed from RAM, ~4× slower|GGUF: same models run by audio.cpp (Vulkan GPU or CPU)">Model</span></label>
+        <div class="select-wrap">
+          <select id="modelSelect"></select>
+          <svg class="chev"><use href="#i-chevron"/></svg>
+        </div>
+        <p class="model-meta" id="modelMeta"></p>
+      </section>
+
+      <details class="section advanced" id="advanced">
+        <summary class="section-title"><span data-help="Fine-tuning for speed, memory and repeatability|The defaults suit most clips">Advanced</span><svg class="chev"><use href="#i-chevron"/></svg></summary>
+        <div class="fields">
+          <label class="field">
+            <span data-help="Seconds of audio the model handles in one go|Shorter: less GPU memory, a bit slower|Longer: faster, but can run out of GPU memory|Chunks overlap and are blended, so joins stay smooth">Chunk length</span>
+            <span class="num"><input type="number" id="optChunk" min="2" max="120" step="1"><em>s</em></span>
+            <small>Audio per model call. Shorter uses less GPU memory</small>
+          </label>
+          <label class="field">
+            <span data-help="How much neighbouring chunks overlap (seconds)|The overlap fades one chunk into the next to hide the join|0.25 s is plenty; 0 can leave small clicks">Crossfade</span>
+            <span class="num"><input type="number" id="optOverlap" value="0.25" min="0" max="2" step="0.05"><em>s</em></span>
+            <small>Overlap that hides joins between chunks</small>
+          </label>
+          <label class="field">
+            <span data-help="How many refinement passes the model makes|16 is the model's default|Fewer: faster but rougher|More: slower, sometimes cleaner">Diffusion steps</span>
+            <span class="num"><input type="number" id="optSteps" value="16" min="2" max="64" step="1"></span>
+            <small>More steps: slower, sometimes cleaner</small>
+          </label>
+          <label class="field">
+            <span data-help="Starting point of the model's random noise|Same seed + same settings = identical result|Try another seed (↻) for a different take on a tricky sound">Seed</span>
+            <span class="num"><input type="number" id="optSeed" value="42" min="0"><button class="icon-btn sm" title="Random seed" id="seedRand"><svg><use href="#i-refresh"/></svg></button></span>
+            <small>Same seed and settings give the same result</small>
+          </label>
+          <label class="field toggle" data-for="bf16 q8 large-q8">
+            <span data-help="GGUF / audio.cpp only|Works through long audio in small tiles to keep GPU memory low|Can be slightly slower on short clips">Memory-bounded mode</span>
+            <input type="checkbox" class="switch" id="optBounded" checked>
+            <small>Needed for long chunks on a 6 GB GPU</small>
+          </label>
+        </div>
+      </details>
+
+      <section class="section">
+        <div class="section-title"><span data-help="Where the model runs|GPU (CUDA or Vulkan): fast|CPU: works anywhere, much slower|Usage: how busy each device is right now">Run on</span>
+          <button class="btn danger sm" id="stopBtn" disabled data-help="Stops running and queued isolations|Also unloads the model to free GPU memory"><svg><use href="#i-stop"/></svg>Stop</button>
+        </div>
+        <div class="device-list" id="deviceList" role="radiogroup" aria-label="Device"></div>
+      </section>
+
+      <section class="section">
+        <label class="section-title" for="promptText"><span data-help="The sound to pull out of the recording|Short, lowercase names work best: “dog barking”, “voice”, “piano”|One sound per run; run again to isolate more">What to isolate</span></label>
+        <input class="input" id="promptText" placeholder="Name the sound" autocomplete="off" spellcheck="false">
+        <p class="examples" id="promptExamples">Try <button>dog barking</button>, <button>utensils</button>, <button>voice</button></p>
+
+        <div class="sub">
+          <div class="sub-head">
+            <span><span data-help="Tells the model when the sound happens|+ span: the sound is clearly present here|− span: the sound is absent here|Helps when the description alone picks the wrong sound|Select a range on the timeline, then “From selection”">Time hints</span> <span class="dim">optional</span></span>
+            <button class="link-btn" id="addSpanBtn" disabled><svg><use href="#i-plus"/></svg>From selection</button>
+          </div>
+          <ul class="spans" id="spanList"></ul>
+          <p class="hint" id="spanHint">Select a range on the timeline where the sound is clearly present (+) or absent (−), then add it.</p>
+        </div>
+
+        <div class="sub" id="visualSub">
+          <div class="sub-head"><span><span data-help="Video sources only: points at the sound's source on screen|Upload a copy of the video (or one frame) with everything except the source blacked out|Useful when similar sounds overlap, e.g. two people talking|Needs ~1 GB more GPU memory and is slower">Visual reference</span> <span class="dim">optional</span></span></div>
+          <label class="file-pick" id="visualPick">
+            <input type="file" id="visualFile" accept="image/*,video/*" hidden>
+            <svg><use href="#i-image"/></svg>
+            <span><strong id="visualName">Masked image or video</strong><br><span class="dim">Only the sound source left visible</span></span>
+            <button class="icon-btn sm" id="visualClear" hidden title="Remove"><svg><use href="#i-x"/></svg></button>
+          </label>
+          <p class="hint" id="visualHint"></p>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title"><span data-help="Which audio to separate|Original: the source recording|Latest residual: what's left after the last isolation, to peel sounds off one by one|Whole clip or only the selected time range (outside it, audio is untouched)">Isolate from</span></div>
+        <div class="segmented" id="fromSeg">
+          <button class="on" data-v="original">Original</button>
+          <button data-v="residual" id="fromResidual" disabled>Latest residual</button>
+        </div>
+        <div class="segmented" id="rangeSeg">
+          <button class="on" data-v="all">Whole clip</button>
+          <button data-v="selection" id="rangeSelBtn" disabled>Selection</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="resizer-x" id="resizeX" title="Drag to resize · double-click to reset"></div>
+    <div class="sidebar-foot">
+      <div class="job" id="jobBox" hidden>
+        <div class="job-row"><span id="jobLabel"></span><span class="mono dim" id="jobPct"></span></div>
+        <div class="progress"><span class="progress-fill" id="jobFill"></span></div>
+      </div>
+      <button class="btn primary block" id="isolateBtn" disabled>
+        <svg><use href="#i-target"/></svg><span data-help="Start separating (Ctrl+Enter)|Adds two tracks: the isolated sound and the residual (everything else, muted)|Results stream in while the model works">Isolate sound</span><kbd>Ctrl ↵</kbd>
+      </button>
+      <p class="foot-note" id="footNote"></p>
+    </div>
+  </aside>
+
+  <main class="workspace">
+    <section class="card source" id="sourceCard" data-state="empty" data-tab="audio">
+      <div class="card-head">
+        <div class="tabs" id="sourceTabs" role="tablist">
+          <button role="tab" data-tab="audio" class="on"><svg><use href="#i-audio"/></svg><span data-help="Upload an audio file: WAV, MP3, FLAC, M4A, OGG…">Audio file</span></button>
+          <button role="tab" data-tab="video"><svg><use href="#i-video"/></svg><span data-help="Upload a video|Its audio is separated; the video stays for preview and MP4 export">Video file</span></button>
+          <button role="tab" data-tab="youtube"><svg><use href="#i-youtube"/></svg><span data-help="Open a YouTube link|Audio is fetched part by part, so playback starts in seconds">YouTube</span></button>
+        </div>
+        <div class="source-meta" id="sourceMeta" hidden>
+          <span class="file-name" id="metaName"></span>
+          <span class="dim mono" id="metaInfo"></span>
+          <button class="btn ghost sm" id="replaceBtn">Replace</button>
+        </div>
+      </div>
+
+      <div class="source-body preview">
+        <div class="video-frame" id="videoFrame">
+          <video id="video" muted playsinline preload="auto"></video>
+          <span class="video-time mono" id="videoTime">00:00.00</span>
+        </div>
+        <canvas class="audio-overview" id="overview" hidden></canvas>
+      </div>
+
+      <div class="source-body picker" data-pane="audio">
+        <label class="drop">
+          <input type="file" accept="audio/*" hidden>
+          <svg><use href="#i-upload"/></svg>
+          <strong>Drop an audio file, or <u>browse</u></strong>
+          <span class="dim drop-sub">WAV, MP3, FLAC, M4A, OGG…</span>
+        </label>
+      </div>
+      <div class="source-body picker" data-pane="video">
+        <label class="drop">
+          <input type="file" accept="video/*" hidden>
+          <svg><use href="#i-upload"/></svg>
+          <strong>Drop a video file, or <u>browse</u></strong>
+          <span class="dim drop-sub">MP4, MOV, MKV, WEBM · the audio track is separated, the video is kept for preview and export</span>
+        </label>
+      </div>
+      <div class="source-body picker" data-pane="youtube">
+        <form class="yt" id="ytForm">
+          <label class="section-title" for="ytUrl">YouTube link</label>
+          <div class="yt-row">
+            <input class="input" id="ytUrl" placeholder="https://www.youtube.com/watch?v=…" spellcheck="false" required>
+            <button class="btn primary" id="ytFetch">Open</button>
+          </div>
+          <div class="yt-modes" id="ytModes">
+            <label class="mode on">
+              <input type="radio" name="ytmode" value="stream" checked>
+              <strong data-help="Pieces are fetched only as needed|Nothing big is stored; replaying the video needs internet">Don't keep a copy</strong>
+              <span class="dim">Plays while it loads, part by part. Needs internet to replay the video.</span>
+            </label>
+            <label class="mode">
+              <input type="radio" name="ytmode" value="save">
+              <strong data-help="Also downloads the full video in the background|Works offline later and speeds up MP4 export">Save a copy</strong>
+              <span class="dim">Same instant playback, plus the full video saved in the background.</span>
+            </label>
+          </div>
+          <div class="yt-range">
+            <span class="dim" data-help="Optional: process only part of the video (m:ss)|Shorter parts are faster and lighter">Only use</span>
+            <input class="input mono sm" id="ytStart" placeholder="0:00" aria-label="Start (m:ss)">
+            <span class="dim">to</span>
+            <input class="input mono sm" id="ytEnd" placeholder="end" aria-label="End (m:ss)">
+            <span class="dim">— optional, m:ss</span>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <div class="resizer-y" id="resizeY" title="Drag to resize · double-click to reset"></div>
+
+    <section class="card timeline" id="timeline">
+      <div class="tl-toolbar">
+        <button class="icon-btn" id="toStart" title="Go to start (Home)"><svg><use href="#i-back"/></svg></button>
+        <button class="icon-btn play" id="playBtn" title="Play / pause (Space)"><svg><use href="#i-play"/></svg></button>
+        <span class="timecode mono"><span id="tcNow">00:00.00</span><span class="dim"> / <span id="tcDur">00:00.00</span></span></span>
+        <span class="buffering dim" id="buffering" hidden>Waiting for audio…</span>
+        <button class="icon-btn" id="loopBtn" data-help="Loop playback inside the selection"><svg><use href="#i-loop"/></svg></button>
+        <span class="tb-sep"></span>
+        <button class="btn ghost sm" id="splitBtn"><svg><use href="#i-split"/></svg><span data-help="Cuts every track at the playhead (S)|Each piece becomes a clip you can mute or re-level|Drag the amber marker to move a cut; double-click it to remove">Split at playhead</span></button>
+        <button class="btn ghost sm" id="splitSelBtn" disabled><svg><use href="#i-split"/></svg><span data-help="Cuts every track at both edges of the selection|Handy for changing the level of just that part">Split selection</span></button>
+        <span class="selection-label mono dim" id="selLabel"></span>
+        <span class="tb-grow"></span>
+        <button class="icon-btn" id="zoomOut" title="Zoom out"><svg><use href="#i-zoom-out"/></svg></button>
+        <input type="range" class="slider zoom" id="zoom" min="1" max="40" step="0.25" value="1" aria-label="Zoom">
+        <button class="icon-btn" id="zoomIn" title="Zoom in"><svg><use href="#i-zoom-in"/></svg></button>
+        <span class="tb-sep"></span>
+        <svg class="tb-icon" data-help="Listening volume only|Exports aren't affected"><use href="#i-vol"/></svg>
+        <input type="range" class="slider master" id="master" min="0" max="100" value="80" aria-label="Output volume">
+      </div>
+
+      <div class="tl-body" id="tlBody">
+        <div class="tl-heads" id="tlHeads"><div class="ruler-spacer"></div></div>
+        <div class="tl-scroll" id="tlScroll">
+          <div class="tl-inner" id="tlInner">
+            <div class="ruler" id="ruler"></div>
+            <div class="lanes" id="lanes"></div>
+            <div class="overlay" id="overlay">
+              <div class="selection" id="selection" hidden></div>
+              <div class="playhead" id="playhead"></div>
+            </div>
+            <div class="clip-pop" id="clipPop" hidden>
+              <div class="clip-pop-title mono" id="clipPopTitle"></div>
+              <div class="clip-pop-row">
+                <button class="icon-btn sm" id="clipMute" title="Mute this clip"></button>
+                <input type="range" class="slider" id="clipGain" min="0" max="200" value="100" aria-label="Clip volume">
+                <span class="mono clip-gain-val" id="clipGainVal">100%</span>
+                <button class="icon-btn sm" id="clipReset" title="Reset clip"><svg><use href="#i-reset"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="empty-tracks" id="emptyTracks">Load an audio or video file, or open a YouTube link, to begin.</div>
+      </div>
+      <p class="tl-hint dim">Hover a clip to mute or change its level · drag on a track to select · <kbd>S</kbd> split · <kbd>Space</kbd> play</p>
+    </section>
+  </main>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" aria-label="History" hidden>
+  <div class="drawer-head">
+    <strong>History</strong>
+    <button class="icon-btn" id="drawerClose" title="Close"><svg><use href="#i-x"/></svg></button>
+  </div>
+  <ul class="history" id="historyList"></ul>
+</aside>
+
+<section class="docs" id="docs" aria-label="Models guide" hidden>
+  <div class="drawer-head">
+    <strong>Models guide</strong>
+    <button class="icon-btn" id="docsClose" title="Close"><svg><use href="#i-x"/></svg></button>
+  </div>
+  <article class="doc" id="docBody">Loading…</article>
+</section>
+
+<div class="help-tip" id="helpTip" role="tooltip" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="static/app.js?v=4"></script>
+</body>
+</html>

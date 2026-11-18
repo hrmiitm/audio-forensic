@@ -1,0 +1,40 @@
+[project]
+name = "audio-forensic"
+version = "0.1.0"
+description = "Isolate any sound from audio, video or YouTube with Meta's SAM-Audio: web UI + CLI, small and large models, FP16/FP8/GGUF."
+readme = "README.md"
+authors = [
+    { name = "hrmiitm" }
+]
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = [
+    "accelerate>=1.16.0",
+    "fastapi>=0.164.0",
+    "huggingface-hub>=2.4.0",
+    "mslk",
+    "nvidia-ml-py>=13.615.71",
+    "psutil>=7.2.2",
+    "python-dotenv>=1.2.4",
+    "python-multipart>=0.0.34",
+    "sam-audio",
+    "uvicorn[standard]>=0.54.0",
+    "yt-dlp[default]>=2026.10.26",
+]
+
+[project.scripts]
+audio-forensic = "audio_forensic.cli:main"
+audio-forensic-web = "audio_forensic.web.app:main"
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.uv.sources]
+sam-audio = { git = "https://github.com/facebookresearch/sam-audio.git" }
+mslk = { index = "pytorch-cu132" }
+
+[[tool.uv.index]]
+name = "pytorch-cu132"
+url = "https://download.pytorch.org/whl/cu132"
+explicit = true
