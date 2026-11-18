@@ -35,7 +35,7 @@ def main(argv=None) -> None:
     p.add_argument("--device", help="cuda:0 | vulkan:1 | cpu (default: best available)")
     p.add_argument("--out-dir")
     p.add_argument("--anchors", type=json.loads, help='time hints, e.g. \'[["+",0.5,2.0]]\'')
-    p.add_argument("--visual", help="masked image/video of the sound source")
+    p.add_argument("--visual", help="visual prompt: the video (or a frame) with the sound source blacked out")
     p.add_argument("--steps", type=int, default=16)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--chunk", type=float, help="seconds per model call")

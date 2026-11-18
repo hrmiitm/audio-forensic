@@ -43,7 +43,9 @@ Audio Forensic runs **SAM-Audio** (Meta, 2025). You name a sound, and the model 
 flowchart LR
   A["Audio (48 kHz)"] --> ENC["DAC-VAE encoder<br/>audio → compact frames"]
   T["Text<br/>'dog barking'"] --> T5["T5 text encoder"]
-  V["Masked video<br/>(optional)"] --> PE["Perception Encoder<br/>(vision)"]
+  HL["Highlight in video<br/>(optional)"] --> SAM["SAM 3 / SAM 2.1<br/>tracks the object"]
+  SAM --> V["Masked video<br/>(object blacked out)"]
+  V --> PE["Perception Encoder<br/>(vision)"]
   H["Time hints<br/>(optional)"] --> AN["Anchor embeddings"]
   N["Random noise<br/>(seed)"] --> DIT
   ENC --> DIT["Diffusion Transformer (DiT)<br/>16 refinement steps"]
@@ -57,7 +59,8 @@ flowchart LR
 
 - **DAC-VAE codec:** turns audio into a short sequence of frames (25 per second) and back. Small and fast.
 - **T5:** turns your description into numbers the model understands.
-- **Perception Encoder:** looks at the masked video frames. It's loaded only when you add a visual reference (~1 GB).
+- **Highlight in video:** you click the source on one frame. SAM 3 (or SAM 2.1) tracks it through the clip, and the app blacks it out in a copy of the video. That's the format SAM-Audio was trained with.
+- **Perception Encoder:** looks at the masked video frames. It's loaded only for highlighted or masked sources (~1 GB more GPU memory).
 - **Time hints** mark frames where the sound is present (+) or absent (−).
 - **DiT:** the big part (0.6B in small, ~2.9B in large). Starting from noise, it refines the target and residual step by step, guided by everything above. The *Diffusion steps* setting is the number of passes; the *Seed* fixes the starting noise.
 

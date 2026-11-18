@@ -5,7 +5,7 @@ Isolate any sound from an audio file, a video or a YouTube link. Name the sound 
 **[Live UI demo](https://hrmiitm.github.io/audio-forensic/)**: the real interface on GitHub Pages with illustrative data. Separating audio needs the app running locally or on a server.
 
 - **Sources:** audio or video files, or YouTube links. YouTube streams part by part, so playback starts within seconds and nothing big has to download first.
-- **Prompts:** text, plus optional time hints (where the sound is or isn't) and a visual reference (a masked video of the source).
+- **Prompts:** text, plus optional time hints (where the sound is or isn't), and **highlight in video**: click the sound's source (or drag a box) on a paused frame. It's tracked through the clip with SAM 3 (or SAM 2.1), and its sound is extracted.
 - **Models:** small (0.6B) and large (3B) in PyTorch FP16, FP8 or GGUF (BF16 / Q8 via audio.cpp). The large model runs on a 6 GB GPU.
 - **Timeline:** per-track mute, solo and level; split into clips and change each clip's level; isolate again from the residual to peel sounds off one by one.
 - **Export:** the mix as WAV or MP4 (video + new audio), every track as a ZIP, or single tracks.
@@ -83,6 +83,8 @@ cp .env.example .env            # put your Hugging Face token in it
 | Web app | `fastapi`, `uvicorn`, `python-multipart` |
 | YouTube | `yt-dlp[default]` |
 | Usage meters | `psutil`, `nvidia-ml-py` |
+| Audio / image I/O | `numpy`, `soundfile`, `scipy`, `pillow` |
+| Models library | `transformers` (T5 text encoder, SAM 3 / SAM 2.1 tracker) |
 | Config and downloads | `huggingface-hub`, `python-dotenv` |
 
 To add a dependency, use `uv add <package>`; it updates `pyproject.toml` and `uv.lock`.
@@ -105,6 +107,8 @@ The official SAM-Audio weights are gated:
 | Small · Q8 / BF16 (GGUF) | `download` | `models/*.gguf` | 2.4 / 2.8 GB |
 | Large · Q8 (GGUF) | `download large` | `models/sam-audio-large-q8_0.gguf` | 5.0 GB |
 | audio.cpp runtime (for GGUF) | `download` | `vendor/audiocpp/` | 0.3 GB |
+| Highlight tracker: SAM 2.1 small | automatically, on first highlight | Hugging Face cache | 0.2 GB |
+| Highlight tracker: SAM 3 (used when you have access) | automatically | Hugging Face cache | 3.4 GB |
 
 ```bash
 uv run python -m audio_forensic.download          # small GGUF (BF16, Q8) + audio.cpp runtime
@@ -118,6 +122,8 @@ Sources:
 
 Models that aren't downloaded appear greyed out in the app.
 
+**Highlight tracker:** the app uses [SAM 3](https://huggingface.co/facebook/sam3) if your token has access (request it on that page; approval is manual), otherwise the open [SAM 2.1 small](https://huggingface.co/facebook/sam2.1-hiera-small). It switches to SAM 3 automatically once you're approved; restart the app after approval. Tracking streams 10 fps frames through the tracker and unloads it before SAM-Audio loads, so only one model is on the GPU at a time.
+
 ## Run
 
 ### Web app
@@ -127,7 +133,7 @@ uv run audio-forensic-web        # http://127.0.0.1:8000  (AF_HOST / AF_PORT to 
 ```
 
 1. Load a source: **Audio file**, **Video file** or **YouTube**.
-2. Name the sound, optionally add time hints or a visual reference, and press **Isolate sound** (Ctrl+Enter).
+2. Name the sound, or for videos press **Highlight in video**, click the source, **Preview**, then **Use**. Optionally add time hints, then press **Isolate sound** (Ctrl+Enter).
 3. Results stream into the timeline as two new tracks: the sound, and a muted residual.
 4. Play, mute, solo and re-level. Use **Split** to change the level of a part of a track.
 5. **Export** the mix (WAV/MP4) or all tracks (ZIP).
@@ -140,7 +146,7 @@ Run one copy of the app at a time. Each copy keeps a model in GPU memory, and tw
 uv run audio-forensic input.wav --text "man speaking"                         # small FP16 on the best GPU
 uv run audio-forensic clip.mp4  --text "dog barking" --model large-fp8
 uv run audio-forensic input.wav --text "voice" --anchors '[["+", 2.0, 5.0]]'  # time hint: present 2–5 s
-uv run audio-forensic video.mp4 --text "" --visual masked.mp4                 # visual reference
+uv run audio-forensic video.mp4 --text "" --visual masked.mp4                 # visual reference: video with the source blacked out
 uv run audio-forensic --help                                                  # devices, steps, seed, chunk…
 ```
 
@@ -164,6 +170,7 @@ Measured on an RTX 4050 Laptop GPU (6 GB) with a 35 s clip and default settings:
 | Model | Params | Peak GPU memory | Separation time | Default chunk |
 |---|---|---|---|---|
 | Small · FP16 | 0.6B | 2.4 GB | 7.8 s (~4.5× faster than real time) | 5 s |
+| Highlight tracking (SAM 2.1), before separation | — | 0.5 GB | ~real time (36 s) | 10 fps |
 | Small · FP16 + visual reference | 0.6B | 4.1 GB | 42 s | 5 s |
 | Large · FP8 | 3B | 4.3 GB | 78 s (~2× slower) | 5 s |
 | Large · FP16 (weights streamed from RAM) | 3B | 4.0 GB | 151 s (~4× slower) | 20 s |
@@ -183,6 +190,7 @@ src/audio_forensic/
   backends.py    PyTorch (FP16/FP8, weight streaming) and GGUF (audio.cpp) behind one interface
   fp8.py         FP8 weight-only layers and the FP16 -> FP8 converter
   pipeline.py    overlapping chunks, crossfades, block output, time hints, selection ranges
+  segment.py     highlight in video: SAM 3 / SAM 2.1 tracking -> masked video
   devices.py     GPU/CPU discovery and live usage
   cli.py         command line          run_samples.py / evaluate.py   benchmark
   download.py    weights + audio.cpp

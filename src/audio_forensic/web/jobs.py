@@ -8,7 +8,7 @@ from .. import backends
 from ..backends import Cancelled, VisualRef
 from ..config import CHUNK_DEFAULTS, OVERLAP_S, SR
 from ..pipeline import make_process, separate_stream
-from . import db
+from . import db, ingest
 
 PALETTE = ["#4fb3a9", "#e07a5f", "#6b9bd1", "#c9a55c", "#b48ead", "#8fbf6a"]
 _queue: "queue.Queue[int]" = queue.Queue()
@@ -24,7 +24,8 @@ def submit(source_id: int, spec: dict, visual_path: str | None) -> int:
     jid = db.insert(
         "jobs", source_id=source_id, model=spec["model"], device=spec["device"], prompt=spec["prompt"].strip().lower(),
         input_track_id=residuals[-1] if spec.get("input") == "residual" and residuals else original,
-        anchors=spec.get("anchors") or [], options=spec.get("options") or {}, visual_path=visual_path,
+        anchors=spec.get("anchors") or [], visual_path=visual_path,
+        options={**(spec.get("options") or {}), **({"highlight": spec["highlight"]} if spec.get("highlight") else {})},
         range_start=rng[0], range_end=rng[1], message="Waiting for the GPU",
     )
     _queue.put(jid)
@@ -57,7 +58,7 @@ def _run(job: dict) -> None:
     jid, sid = job["id"], job["source_id"]
     src = db.one("SELECT * FROM sources WHERE id = ?", sid)
     n_targets = db.one("SELECT COUNT(*) AS c FROM tracks WHERE source_id = ? AND role = 'target'", sid)["c"]
-    label = job["prompt"] or "visual source"
+    label = job["prompt"] or "highlighted source"
     common = dict(source_id=sid, job_id=jid, status="partial")
     target = db.insert("tracks", role="target", name=label[:1].upper() + label[1:], color=PALETTE[n_targets % len(PALETTE)], **common)
     # Residuals start muted (you hear the isolated sound); the input is muted since its parts are now separate tracks
@@ -66,15 +67,24 @@ def _run(job: dict) -> None:
     db.update("jobs", jid, status="running", message="Loading model")
     opts = {"chunk": CHUNK_DEFAULTS[job["model"]], "overlap": OVERLAP_S, "steps": 16, "seed": 42, **job["options"]}
     t0 = time.perf_counter()
-    status, message = "failed", None
+    status, message, track_s = "failed", None, 0.0
     try:
-        backend = backends.get_backend(job["model"], job["device"], vision=bool(job["visual_path"]))
+        visual_path = job["visual_path"]
+        if highlight := job["options"].get("highlight"):  # 1) track the highlighted object (segmenter in the GPU slot)
+            def tracking(f):
+                db.update("jobs", jid, message=f"Tracking the highlighted object · {f:.0%}")
+            db.update("jobs", jid, message="Tracking the highlighted object")
+            visual_path = str(ingest.highlight_video(src, highlight, tracking, _cancel))
+            track_s, t0 = time.perf_counter() - t0, time.perf_counter()
+            db.update("jobs", jid, visual_path=visual_path, message="Loading model")
+        # 2) separate (loading SAM-Audio unloads the segmenter first)
+        backend = backends.get_backend(job["model"], job["device"], vision=bool(visual_path))
         load_s, t0 = time.perf_counter() - t0, time.perf_counter()  # separation time excludes model loading
         backend.seed(int(opts["seed"]))
         backend.reset_peak()
         total = int(src["duration_s"] * SR)
         rng = [job["range_start"], job["range_end"]] if job["range_start"] is not None else None
-        visual = VisualRef(job["visual_path"]) if job["visual_path"] else None
+        visual = VisualRef(visual_path) if visual_path else None
         process = make_process(backend, job["prompt"], job["anchors"], visual, opts, rng, _cancel)
 
         def emit(a, t, r):
@@ -90,7 +100,8 @@ def _run(job: dict) -> None:
                         float(opts["chunk"]), float(opts["overlap"]), _cancel, progress)
         status = "done"
         message = (f"{_fmt(src['duration_s'])} separated in {time.perf_counter() - t0:.1f} s"
-                   + (f" (+{load_s:.0f} s model load)" if load_s > 1 else "") + (f" · {backend.note}" if backend.note else ""))
+                   + "".join(f" (+{s:.0f} s {what})" for s, what in ((track_s, "tracking"), (load_s, "model load")) if s > 1)
+                   + (f" · {backend.note}" if backend.note else ""))
         db.update("jobs", jid, peak_vram_mib=backend.peak_vram_mib())
     except Cancelled:
         status, message = "cancelled", "Stopped"

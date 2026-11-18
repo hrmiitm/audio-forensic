@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Audio Forensic</title>
   <script>document.documentElement.dataset.theme = localStorage.getItem("af-theme") || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");</script>
-  <link rel="stylesheet" href="static/style.css?v=5">
+  <link rel="stylesheet" href="static/style.css?v=7">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -136,13 +136,15 @@
         </div>
 
         <div class="sub" id="visualSub">
-          <div class="sub-head"><span><span data-help="Video sources only: points at the sound's source on screen|Upload a copy of the video (or one frame) with everything except the source blacked out|Useful when similar sounds overlap, e.g. two people talking|Needs ~1 GB more GPU memory and is slower">Visual reference</span> <span class="dim">optional</span></span></div>
-          <label class="file-pick" id="visualPick">
-            <input type="file" id="visualFile" accept="image/*,video/*" hidden>
-            <svg><use href="#i-image"/></svg>
-            <span><strong id="visualName">Masked image or video</strong><br><span class="dim">Only the sound source left visible</span></span>
-            <button class="icon-btn sm" id="visualClear" hidden title="Remove"><svg><use href="#i-x"/></svg></button>
-          </label>
+          <div class="sub-head"><span><span data-help="Video sources only: point at the sound's source on screen|Highlight in video: click the source (or drag a box) on a paused frame; it's tracked through the clip|Upload mask: a copy of the video with the source blacked out|Useful when similar sounds overlap, e.g. two people talking|Slower, and needs ~1 GB more GPU memory">Visual reference</span> <span class="dim">optional</span></span></div>
+          <div class="visual-actions">
+            <button class="btn sm" id="highlightBtn"><svg><use href="#i-target"/></svg>Highlight in video</button>
+            <label class="btn ghost sm" id="visualPick"><input type="file" id="visualFile" accept="image/*,video/*" hidden>Upload mask</label>
+          </div>
+          <div class="visual-state" id="visualState" hidden>
+            <span id="visualName"></span>
+            <button class="icon-btn sm" id="visualClear" title="Remove"><svg><use href="#i-x"/></svg></button>
+          </div>
           <p class="hint" id="visualHint"></p>
         </div>
       </section>
@@ -191,6 +193,14 @@
       <div class="source-body preview">
         <div class="video-frame" id="videoFrame">
           <video id="video" muted playsinline preload="auto"></video>
+          <canvas class="hl-canvas" id="hlCanvas" hidden></canvas>
+          <div class="hl-bar" id="hlBar" hidden>
+            <span id="hlInfo">Click the source · Shift+click: not this · Drag: box</span>
+            <button class="btn ghost sm" id="hlClear">Clear</button>
+            <button class="btn sm" id="hlPreview">Preview</button>
+            <button class="btn primary sm" id="hlDone">Use</button>
+            <button class="icon-btn sm" id="hlCancel" title="Cancel"><svg><use href="#i-x"/></svg></button>
+          </div>
           <span class="video-time mono" id="videoTime">00:00.00</span>
         </div>
         <canvas class="audio-overview" id="overview" hidden></canvas>
@@ -312,6 +322,6 @@
 <div class="help-tip" id="helpTip" role="tooltip" hidden></div>
 <div class="toast" id="toast" hidden></div>
 
-<script src="static/app.js?v=5"></script>
+<script src="static/app.js?v=7"></script>
 </body>
 </html>

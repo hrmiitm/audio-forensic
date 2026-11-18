@@ -7,7 +7,7 @@ from functools import wraps
 from pathlib import Path
 
 from fastapi import Body, FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .. import backends
@@ -194,9 +194,9 @@ def download_track(tid: int):
 def create_job(spec: str = Form(...), visual: UploadFile | None = File(None)):
     spec = json.loads(spec)
     src = get("sources", int(spec["source_id"]))
-    if not spec.get("prompt", "").strip() and visual is None:
-        raise ValueError("Describe the sound, or add a visual reference")
-    if visual is not None and not src["has_video"]:
+    if not spec.get("prompt", "").strip() and visual is None and not spec.get("highlight"):
+        raise ValueError("Describe the sound, highlight it in the video, or add a visual reference")
+    if (visual is not None or spec.get("highlight")) and not src["has_video"]:
         raise ValueError("A visual reference needs a video source")
     path = None
     if visual is not None:
@@ -205,6 +205,27 @@ def create_job(spec: str = Form(...), visual: UploadFile | None = File(None)):
         path = refs / f"{len(list(refs.iterdir())) + 1}{Path(visual.filename or 'ref').suffix.lower()}"
         path.write_bytes(visual.file.read())
     return {"id": jobs.submit(src["id"], spec, str(path) if path else None)}
+
+
+@app.get("/api/segmenter")
+def segmenter_info():
+    from ..segment import segmenter
+
+    repo, label = segmenter()
+    return {"repo": repo, "label": label, "sam3": "sam3" in repo}
+
+
+@app.post("/api/sources/{sid}/highlight")
+@errors
+def highlight_preview(sid: int, body: dict = Body(...)):
+    src = get("sources", sid)
+    if not src["has_video"]:
+        raise ValueError("Highlighting needs a video source")
+    if not (body.get("points") or body.get("box")):
+        raise ValueError("Click the sound source or drag a box around it first")
+    if db.one("SELECT id FROM jobs WHERE status IN ('queued', 'running')"):
+        raise HTTPException(409, "Wait until the current isolation finishes (the GPU is busy)")
+    return Response(ingest.highlight_preview(src, body), media_type="image/png")
 
 
 @app.post("/api/jobs/stop")

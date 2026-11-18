@@ -233,16 +233,22 @@ _cache: dict = {"key": None, "backend": None}
 _lock = threading.RLock()
 
 
-def get_backend(model: str, device: str, vision: bool = False):
-    """Return a loaded backend, reusing the previous one when nothing changed."""
-    key = (model, device, vision and MODEL_SPECS[model]["kind"] == "torch")
+def acquire(key: tuple, factory):
+    """The single GPU slot: return the loaded model for `key`, unloading whatever else is loaded first.
+    Separation backends and the video segmenter share it, so only one model is ever in memory."""
     with _lock:
         if _cache["key"] != key:
             release()
-            spec = MODEL_SPECS[model]
-            _cache["backend"] = TorchBackend(spec, device, vision) if spec["kind"] == "torch" else GGUFBackend(spec, device)
+            _cache["backend"] = factory()
             _cache["key"] = key
         return _cache["backend"]
+
+
+def get_backend(model: str, device: str, vision: bool = False):
+    """Return a loaded separation backend, reusing the previous one when nothing changed."""
+    spec = MODEL_SPECS[model]
+    vision = vision and spec["kind"] == "torch"
+    return acquire((model, device, vision), lambda: TorchBackend(spec, device, vision) if spec["kind"] == "torch" else GGUFBackend(spec, device))
 
 
 def release() -> None:

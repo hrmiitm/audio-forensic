@@ -32,6 +32,7 @@ There is no unit-test suite. Verify changes by running the real thing:
 | Loading/running models | `backends.py` (`TorchBackend`, `GGUFBackend`, `get_backend`, `release`) |
 | Chunking, crossfade, time hints, selection range | `pipeline.py` (`separate_stream`, `make_process`) |
 | FP8 | `fp8.py` |
+| Highlight in video (SAM 3 / SAM 2.1 tracking → masked video) | `segment.py` |
 | Storage (tracks = WAV blocks + SQLite rows) | `web/db.py` |
 | Uploads / YouTube / video proxy | `web/ingest.py` |
 | Job queue, Stop | `web/jobs.py` |
@@ -43,6 +44,8 @@ Key ideas:
 - **Every track is a list of WAV blocks** (10 s first, then 30 s). Ingest, separation and playback all work block by block, which gives progressive YouTube playback and long-file support. `db.read_range` waits for blocks that are still being produced.
 - **Backends share one interface:** `backend(wave, text, anchors, visual, opts, cancel) -> (target, residual)` for one window. The pipeline does windowing and crossfades.
 - **Torch loading:** build the model under `accelerate.init_empty_weights`, rebuild T5 for real (it isn't in the checkpoint), rebuild the vision encoder's `Rope2D` tables (a plain object, not a submodule), then `load_state_dict(assign=True)` from a memory-mapped checkpoint. If the weights won't fit, the transformer is offloaded with `accelerate.cpu_offload`.
+- **One model on the GPU at a time:** `backends.acquire()` is the single slot shared by separation backends and the segmenter. Loading one unloads the other.
+- **Visual prompt convention (Meta's `mask_videos`):** frames * (mask == 0), i.e. the **target object is blacked out**. `segment.track` streams frames through the tracker; when pruning `session.processed_frames`, keep the keys (the session numbers frames by `len()`) and only free the tensors.
 - **One GPU job at a time** (`jobs._worker`). The model stays loaded between jobs; `Stop` cancels and calls `backends.release()`.
 - **YouTube stream URLs return 403 for about the first second;** `ingest.retry` handles this. Let yt-dlp pick formats (`STREAM_FMT`), so you get the original-language audio and not dubbed/DRC copies.
 

@@ -153,6 +153,32 @@ def resume_all() -> None:
         start(t["source_id"])
 
 
+def _with_video(source: dict, fn):
+    """fn(video_path_or_url, headers, offset_s), retried for YouTube's fresh-URL refusals."""
+    def attempt(_urls):
+        video, headers = video_source(source)
+        return fn(video, headers, source["offset_s"] if source["kind"] == "youtube" else 0.0)
+    return retry(source, attempt)
+
+
+def highlight_preview(source: dict, prompt: dict) -> bytes:
+    """PNG mask of the highlighted object on one frame (fast check before a full run)."""
+    from .. import segment
+
+    return _with_video(source, lambda v, h, off: segment.preview(v, h, off + float(prompt["t"]), prompt))
+
+
+def highlight_video(source: dict, prompt: dict, progress=None, cancel=None) -> Path:
+    """Masked video for SAM-Audio (highlighted object blacked out); reused for the same highlight."""
+    from .. import segment
+
+    out = segment.cache_path(db.source_dir(source["id"]) / "refs", prompt)
+    if not out.exists():
+        out.parent.mkdir(parents=True, exist_ok=True)
+        _with_video(source, lambda v, h, off: segment.track(v, h, off, source["duration_s"], prompt, out, progress, cancel))
+    return out
+
+
 def video_source(source: dict) -> tuple[str, dict | None]:
     """Local path, or (URL, headers) to proxy, for the video preview / MP4 export."""
     if source.get("path") and Path(source["path"]).exists() and source["has_video"]:

@@ -195,20 +195,24 @@ $("#addSpanBtn").addEventListener("click", () => {
 });
 
 const visualFile = $("#visualFile");
+let highlight = null; // { t, points: [[x, y, label]], box: [x0, y0, x1, y1] | null } in 0..1 video coordinates
 function renderVisual() {
-  const ok = !!src?.has_video;
+  const ok = !!src?.has_video, f = visualFile.files[0];
   $("#visualSub").classList.toggle("disabled", !ok);
-  $("#visualHint").textContent = ok
-    ? "A copy of this video (or one frame) with everything except the sound source blacked out. The text can then be left empty."
-    : "Available when the source has video.";
-  const f = visualFile.files[0];
-  $("#visualName").textContent = f ? f.name : "Masked image or video";
-  $("#visualClear").hidden = !f;
+  const state = highlight
+    ? `Highlighted at ${fmt(highlight.t)} · ${[highlight.points.length && `${highlight.points.length} point${highlight.points.length > 1 ? "s" : ""}`, highlight.box && "box"].filter(Boolean).join(" + ")}`
+    : f ? `Mask: ${f.name}` : "";
+  $("#visualState").hidden = !state;
+  $("#visualName").textContent = state;
+  $("#visualHint").textContent = !ok ? "Available when the source has video."
+    : state ? "The text can be left empty: the model listens for whatever the source makes."
+    : "Pause on a frame where the source is visible, then Highlight. It's tracked through the whole clip.";
 }
-visualFile.addEventListener("change", renderVisual);
+visualFile.addEventListener("change", () => { if (visualFile.files[0]) highlight = null; renderVisual(); });
 $("#visualClear").addEventListener("click", (e) => {
   e.preventDefault();
   visualFile.value = "";
+  highlight = null;
   renderVisual();
 });
 
@@ -226,13 +230,15 @@ $("#seedRand").addEventListener("click", (e) => {
 /* ═════════ Isolation jobs ═════════ */
 async function isolate() {
   if (!src || $("#isolateBtn").disabled) return;
-  const prompt = promptInput.value.trim().toLowerCase(), visual = src.has_video ? visualFile.files[0] : null;
-  if (!prompt && !visual) { promptInput.focus(); return toast("Name the sound to isolate (or add a visual reference)"); }
+  const prompt = promptInput.value.trim().toLowerCase(), hl = src.has_video ? highlight : null;
+  const visual = src.has_video && !hl ? visualFile.files[0] : null;
+  if (!prompt && !visual && !hl) { promptInput.focus(); return toast("Name the sound, or highlight its source in the video"); }
   const spec = {
     source_id: src.id, model, device, prompt,
     input: segValue("fromSeg"),
     range: segValue("rangeSeg") === "selection" && selection ? [selection.a, selection.b] : null,
     anchors: spans.map((s) => [s.sign, s.a, s.b]),
+    highlight: hl,
     options: { chunk: +$("#optChunk").value, overlap: +$("#optOverlap").value, steps: +$("#optSteps").value,
                seed: +$("#optSeed").value, bounded: $("#optBounded").checked },
   };
@@ -290,6 +296,7 @@ async function openSource(id) {
   setWaiting(false);
   bufs.clear();
   src = null; tracks = []; jobs = []; splits = []; lastSeg = 0; lastError = null; selection = null; spans = []; playT = 0;
+  highlight = null; visualFile.value = ""; exitHighlight();
   if (id) {
     try {
       const d = await api(`/api/sources/${id}`);
@@ -935,6 +942,7 @@ const ready = (t) => tracks.every((tr) => !audible(tr) || tr.status !== "partial
 
 function startPlay(t) {
   if (DEMO) return demoNotice();
+  exitHighlight();
   stopPlay();
   if (!src || !tracks.length) return;
   if (t >= DUR - 0.01) t = 0;
@@ -992,6 +1000,7 @@ function seek(t) {
   setWaiting(false);
   setPlay(t);
   if (src?.has_video) video.currentTime = t + videoOffset();
+  if (hlDraft) Object.assign(hlDraft, { t, mask: null }) && drawHl();
   if (wasPlaying) startPlay(t);
 }
 
@@ -1044,6 +1053,100 @@ makeResizer($("#resizeY"), "y", (y) => {
   workspace.style.setProperty("--source-h", `${h}px`);
   return h;
 }, "af-source-h");
+
+/* ═════════ Highlight in video: click/box the source, preview its mask ═════════ */
+const hlCanvas = $("#hlCanvas");
+let hlDraft = null, hlDrag = null;
+
+function contentRect() { // where the video picture sits inside the frame (object-fit: contain)
+  const fr = $("#videoFrame").getBoundingClientRect(), vw = video.videoWidth || 16, vh = video.videoHeight || 9;
+  const k = Math.min(fr.width / vw, fr.height / vh), w = vw * k, h = vh * k;
+  return { left: fr.left + (fr.width - w) / 2, top: fr.top + (fr.height - h) / 2, w, h, ox: (fr.width - w) / 2, oy: (fr.height - h) / 2 };
+}
+const toNorm = (e, r) => [clamp((e.clientX - r.left) / r.w, 0, 1), clamp((e.clientY - r.top) / r.h, 0, 1)];
+
+function startHighlight() {
+  if (DEMO) return demoNotice();
+  if (!src?.has_video) return;
+  stopPlay();
+  setWaiting(false);
+  setSourceState("loaded");
+  hlDraft = { t: playT, points: [...(highlight?.points || [])], box: highlight?.box || null, mask: null };
+  if (highlight) hlDraft.t = highlight.t, seek(highlight.t);
+  video.currentTime = hlDraft.t + videoOffset();
+  hlCanvas.hidden = $("#hlBar").hidden = false;
+  drawHl();
+  api("/api/segmenter").then((m) => ($("#hlInfo").textContent = `Click the source · Shift+click: not this · Drag: box · ${m.label}`)).catch(() => {});
+}
+function exitHighlight() {
+  hlDraft = null;
+  hlCanvas.hidden = $("#hlBar").hidden = true;
+}
+function drawHl() {
+  if (!hlDraft) return;
+  const fr = $("#videoFrame").getBoundingClientRect(), dpr = devicePixelRatio || 1, r = contentRect();
+  hlCanvas.width = fr.width * dpr; hlCanvas.height = fr.height * dpr;
+  const ctx = hlCanvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+  if (hlDraft.mask) ctx.drawImage(hlDraft.mask, r.ox, r.oy, r.w, r.h);
+  const px = ([x, y]) => [r.ox + x * r.w, r.oy + y * r.h];
+  const box = hlDrag?.box || hlDraft.box;
+  if (box) {
+    const [x0, y0] = px(box), [x1, y1] = px(box.slice(2));
+    ctx.strokeStyle = "#e9a23b"; ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
+    ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+    ctx.setLineDash([]);
+  }
+  for (const [x, y, label] of hlDraft.points) {
+    const [cx, cy] = px([x, y]);
+    ctx.beginPath(); ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+    ctx.fillStyle = label ? "#5fb59a" : "#e0715c"; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.stroke();
+  }
+}
+new ResizeObserver(drawHl).observe($("#videoFrame"));
+hlCanvas.addEventListener("contextmenu", (e) => e.preventDefault());
+hlCanvas.addEventListener("pointerdown", (e) => {
+  const r = contentRect();
+  hlDrag = { x: e.clientX, y: e.clientY, start: toNorm(e, r), negative: e.shiftKey || e.button === 2 };
+  hlCanvas.setPointerCapture(e.pointerId);
+});
+hlCanvas.addEventListener("pointermove", (e) => {
+  if (!hlDrag || Math.hypot(e.clientX - hlDrag.x, e.clientY - hlDrag.y) < 6) return;
+  const [a, b] = [hlDrag.start, toNorm(e, contentRect())];
+  hlDrag.box = [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])];
+  drawHl();
+});
+hlCanvas.addEventListener("pointerup", () => {
+  if (!hlDrag) return;
+  if (hlDrag.box) hlDraft.box = hlDrag.box;
+  else hlDraft.points.push([...hlDrag.start, hlDrag.negative ? 0 : 1]);
+  hlDraft.mask = null;
+  hlDrag = null;
+  drawHl();
+});
+$("#hlClear").addEventListener("click", () => { Object.assign(hlDraft, { points: [], box: null, mask: null }); drawHl(); });
+$("#hlCancel").addEventListener("click", exitHighlight);
+$("#hlPreview").addEventListener("click", async () => {
+  if (!hlDraft.points.length && !hlDraft.box) return toast("Click the sound source or drag a box around it first");
+  const btn = $("#hlPreview"), { t, points, box } = hlDraft;
+  btn.disabled = true;
+  btn.textContent = "Previewing…";
+  try {
+    const r = await api(`/api/sources/${src.id}/highlight`, send("POST", { t, points, box }));
+    if (hlDraft) { hlDraft.mask = await createImageBitmap(await r.blob()); drawHl(); }
+  } catch (e) { toast(e.message, 6000); }
+  btn.disabled = false;
+  btn.textContent = "Preview";
+});
+$("#hlDone").addEventListener("click", () => {
+  if (!hlDraft.points.length && !hlDraft.box) return toast("Click the sound source or drag a box around it first");
+  highlight = { t: +hlDraft.t.toFixed(2), points: hlDraft.points.map((p) => p.map((v) => +v.toFixed(4))), box: hlDraft.box && hlDraft.box.map((v) => +v.toFixed(4)) };
+  visualFile.value = "";
+  exitHighlight();
+  renderVisual();
+});
+$("#highlightBtn").addEventListener("click", startHighlight);
 
 /* ═════════ Hover help: bullet tips on [data-help] labels ═════════ */
 const tip = $("#helpTip");
@@ -1161,7 +1264,7 @@ function demoApi(path, opts) {
 document.addEventListener("keydown", (e) => {
   const typing = e.target.matches("input:not([type=range]):not([type=checkbox]):not([type=radio]), textarea, select");
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); return isolate(); }
-  if (e.key === "Escape") { closeMenus(); drawer(false); closeDocs(); hideTip(); setSelection(null); return; }
+  if (e.key === "Escape") { closeMenus(); drawer(false); closeDocs(); hideTip(); exitHighlight(); setSelection(null); return; }
   if (typing || !src) return;
   if (e.code === "Space") { e.preventDefault(); togglePlay(); }
   if (e.key === "s" || e.key === "S") $("#splitBtn").click();

@@ -523,3 +523,20 @@ button span[data-help] { text-decoration: none; cursor: inherit; }
   color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-line); text-decoration: none;
 }
 .toast a { color: var(--accent); }
+
+/* ───────── Highlight in video ───────── */
+.visual-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.visual-actions .btn { flex: 1; justify-content: center; }
+.visual-actions label.btn { cursor: pointer; }
+.visual-state { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 6px 6px 10px; border: 1px solid var(--accent-line); background: var(--accent-soft); border-radius: var(--r-sm); font-size: 12px; }
+.visual-state span { flex: 1; }
+.sub.disabled .visual-actions { opacity: .45; pointer-events: none; }
+.hl-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; cursor: crosshair; touch-action: none; }
+.hl-bar {
+  position: absolute; z-index: 3; top: 8px; left: 8px; right: 8px;
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; padding: 6px;
+  background: rgba(14, 16, 18, .88); color: #e4e7ea; border: 1px solid rgba(255, 255, 255, .12); border-radius: var(--r); font-size: 12px;
+}
+.hl-bar .btn.ghost { color: #c4c9cf; }
+.hl-bar .icon-btn { color: #c4c9cf; }
+.hl-bar #hlInfo { flex-basis: 100%; text-align: center; color: #c4c9cf; }
