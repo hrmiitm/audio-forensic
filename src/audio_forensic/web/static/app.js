@@ -1127,10 +1127,10 @@ const DEMO_DEVICES = [
 ];
 const DEMO_MODELS = [
   ["torch-fp16", "SAM-Audio small · FP16 (PyTorch)", ["0.6B params", "~2.5 GB GPU memory"], 5],
-  ["large-fp8", "SAM-Audio large · FP8 (PyTorch)", ["3B params", "~4.3 GB GPU memory"], 5],
-  ["large-fp16", "SAM-Audio large · FP16 (PyTorch)", ["3B params", "Weights streamed from RAM on 6 GB"], 20],
   ["q8", "SAM-Audio small · Q8 (GGUF)", ["0.6B params", "2.4 GB file"], 30],
   ["bf16", "SAM-Audio small · BF16 (GGUF)", ["0.6B params", "2.8 GB file"], 30],
+  ["large-fp8", "SAM-Audio large · FP8 (PyTorch)", ["3B params", "~4.3 GB GPU memory"], 5],
+  ["large-fp16", "SAM-Audio large · FP16 (PyTorch)", ["3B params", "Weights streamed from RAM on 6 GB"], 20],
   ["large-q8", "SAM-Audio large · Q8 (GGUF)", ["3B params", "5.0 GB file"], 30],
 ].map(([id, label, meta, chunk]) => ({ id, label, meta, chunk, available: true, note: "Demo: run the app locally to use this model", devices: DEMO_DEVICES }));
 const DEMO_TRACKS = [

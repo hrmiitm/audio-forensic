@@ -7,10 +7,10 @@ Audio Forensic runs **SAM-Audio** (Meta, 2025). You name a sound, and the model 
 | Version | Size | Weights file | GPU memory | Speed on a 6 GB RTX 4050 |
 |---|---|---|---|---|
 | Small · FP16 (PyTorch) | 0.6B | 5.1 GB (official, FP32 → FP16 on load) | ~2.4 GB | ~4.5× faster than real time |
-| Large · FP8 (PyTorch) | 3B | 4.6 GB (built locally from FP16) | ~4.3 GB | ~2× slower than real time |
-| Large · FP16 (PyTorch) | 3B | 7.4 GB (community FP16 export) | ~4.0 GB, weights streamed from RAM | ~4× slower than real time |
 | Small · Q8 (GGUF) | 0.6B | 2.4 GB | 6.8 GB ¹ | not measured here |
 | Small · BF16 (GGUF) | 0.6B | 2.8 GB | 7.4 GB ¹ | not measured here |
+| Large · FP8 (PyTorch) | 3B | 4.6 GB (built locally from FP16) | ~4.3 GB | ~2× slower than real time |
+| Large · FP16 (PyTorch) | 3B | 7.4 GB (community FP16 export) | ~4.0 GB, weights streamed from RAM | ~4× slower than real time |
 | Large · Q8 (GGUF) | 3B | 5.0 GB | 9.4 GB ¹ | not measured here |
 
 - Speeds are for a 35 s clip with the default chunk length, after the model has loaded (loading takes 10–15 s, once).
