@@ -1,0 +1,46 @@
+# Publishes the web UI as a static demo on GitHub Pages.
+# In the demo (any *.github.io host) the page runs without a server: it shows an illustrative
+# session, and anything that needs the backend points visitors to this repository.
+name: Deploy UI demo to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/audio_forensic/web/static/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the static site
+        run: |
+          mkdir -p _site/static
+          cp src/audio_forensic/web/static/index.html _site/
+          cp src/audio_forensic/web/static/{style.css,app.js,models.md} _site/static/
+          touch _site/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
